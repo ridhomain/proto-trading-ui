@@ -1,164 +1,47 @@
-// src/pages/Login/index.tsx
-import { useEffect, useState } from 'react';
-import { Card, Button, Space, Spin, message, Alert } from 'antd';
+import { Button, Card, Typography, Space } from 'antd';
 import { GoogleOutlined } from '@ant-design/icons';
-import { history } from '@umijs/max';
-import { authActions, kratos } from '@/stores/auth.store';
-import { LoginFlow } from '@ory/kratos-client';
-import styles from './index.less';
+import { authActions } from '@/stores/auth.store';
+
+const { Title, Paragraph } = Typography;
 
 export default function LoginPage() {
-  const [flow, setFlow] = useState<LoginFlow | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    initializeFlow();
-  }, []);
-
-  const initializeFlow = async () => {
-    try {
-      setError(null);
-      
-      // Check if we already have a flow ID in URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const flowId = urlParams.get('flow');
-      
-      if (flowId) {
-        // Fetch existing flow from Kratos
-        const { data } = await kratos.getLoginFlow({ id: flowId });
-        setFlow(data);
-      } else {
-        // Create new flow
-        const newFlow = await authActions.createLoginFlow();
-        setFlow(newFlow);
-        
-        // Update URL with flow ID
-        history.replace(`/login?flow=${newFlow.id}`);
-      }
-    } catch (error: any) {
-      console.error('Failed to initialize login flow:', error);
-      
-      // If flow is expired or invalid, create a new one
-      if (error.response?.status === 410 || error.response?.status === 403) {
-        try {
-          const newFlow = await authActions.createLoginFlow();
-          setFlow(newFlow);
-          history.replace(`/login?flow=${newFlow.id}`);
-        } catch (retryError) {
-          setError('Failed to initialize login. Please refresh the page.');
-        }
-      } else {
-        setError('Failed to initialize login. Please check your connection.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    if (!flow) return;
-
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      // Find CSRF token from flow nodes
-      let csrfToken: string | undefined;
-      
-      for (const node of flow.ui.nodes) {
-        if ('attributes' in node && 
-            node.attributes && 
-            'name' in node.attributes &&
-            node.attributes.name === 'csrf_token' &&
-            'value' in node.attributes) {
-          csrfToken = node.attributes.value as string;
-          break;
-        }
-      }
-
-      if (!csrfToken) {
-        throw new Error('Security token not found');
-      }
-
-      // Submit OAuth login
-      await authActions.submitOAuthLogin(flow.id, csrfToken, 'google');
-      
-      // If we reach here without redirect, something might be wrong
-      message.info('Redirecting to Google...');
-    } catch (error: any) {
-      console.error('Login error:', error);
-      
-      // Handle specific error cases
-      if (error.response?.data?.ui?.messages) {
-        const errorMessage = error.response.data.ui.messages[0]?.text;
-        setError(errorMessage || 'Login failed. Please try again.');
-      } else {
-        setError('Login failed. Please try again.');
-      }
-      
-      // Refresh the flow if needed
-      if (error.response?.status === 410) {
-        initializeFlow();
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleRegisterRedirect = () => {
-    history.push('/registration');
-  };
-
-  if (loading) {
-    return (
-      <div className={styles.container}>
-        <Spin size="large" tip="Initializing..." />
-      </div>
-    );
-  }
-
   return (
-    <div className={styles.container}>
-      <Card className={styles.loginCard} title="Welcome to Proto Trading">
+    <div
+      style={{
+        height: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: '#f0f2f5',
+      }}
+    >
+      <Card style={{ width: 400, textAlign: 'center' }}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <div style={{ textAlign: 'center' }}>
-            <p>Sign in to access your trading dashboard</p>
+          <div>
+            <Title level={2} style={{ marginBottom: 0 }}>
+              Welcome to Proto Trading
+            </Title>
+            <Paragraph type="secondary">
+              Professional trading dashboard for Indonesian stock market
+            </Paragraph>
           </div>
 
-          {error && (
-            <Alert
-              message={error}
-              type="error"
-              showIcon
-              closable
-              onClose={() => setError(null)}
-            />
-          )}
-          
           <Button
             type="primary"
             icon={<GoogleOutlined />}
             size="large"
             block
-            onClick={handleGoogleLogin}
-            loading={submitting}
-            disabled={!flow}
+            onClick={() => authActions.redirectToLogin()}
           >
-            Continue with Google
+            Sign in with Google
           </Button>
 
-          <div style={{ textAlign: 'center' }}>
-            <span>Don't have an account? </span>
-            <a onClick={handleRegisterRedirect}>Sign up</a>
-          </div>
-
-          <div style={{ textAlign: 'center', color: '#888' }}>
-            <small>
-              By signing in, you agree to our Terms of Service and Privacy Policy
-            </small>
-          </div>
+          <Paragraph>
+            Don't have an account?{' '}
+            <a onClick={() => authActions.redirectToRegistration()}>
+              Register here
+            </a>
+          </Paragraph>
         </Space>
       </Card>
     </div>
