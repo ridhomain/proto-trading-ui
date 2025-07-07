@@ -1,14 +1,13 @@
-// src/pages/Login/index.tsx
+// src/pages/Registration/index.tsx
 import { useEffect, useState } from 'react';
 import { Card, Button, Space, Spin, message, Alert } from 'antd';
 import { GoogleOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
 import { authActions, kratos } from '@/stores/auth.store';
-import { LoginFlow } from '@ory/kratos-client';
-import styles from './index.less';
+import { RegistrationFlow } from '@ory/kratos-client';
 
-export default function LoginPage() {
-  const [flow, setFlow] = useState<LoginFlow | null>(null);
+export default function RegistrationPage() {
+  const [flow, setFlow] = useState<RegistrationFlow | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,37 +26,37 @@ export default function LoginPage() {
       
       if (flowId) {
         // Fetch existing flow from Kratos
-        const { data } = await kratos.getLoginFlow({ id: flowId });
+        const { data } = await kratos.getRegistrationFlow({ id: flowId });
         setFlow(data);
       } else {
         // Create new flow
-        const newFlow = await authActions.createLoginFlow();
+        const newFlow = await authActions.createRegistrationFlow();
         setFlow(newFlow);
         
         // Update URL with flow ID
-        history.replace(`/login?flow=${newFlow.id}`);
+        history.replace(`/registration?flow=${newFlow.id}`);
       }
     } catch (error: any) {
-      console.error('Failed to initialize login flow:', error);
+      console.error('Failed to initialize registration flow:', error);
       
       // If flow is expired or invalid, create a new one
       if (error.response?.status === 410 || error.response?.status === 403) {
         try {
-          const newFlow = await authActions.createLoginFlow();
+          const newFlow = await authActions.createRegistrationFlow();
           setFlow(newFlow);
-          history.replace(`/login?flow=${newFlow.id}`);
+          history.replace(`/registration?flow=${newFlow.id}`);
         } catch (retryError) {
-          setError('Failed to initialize login. Please refresh the page.');
+          setError('Failed to initialize registration. Please refresh the page.');
         }
       } else {
-        setError('Failed to initialize login. Please check your connection.');
+        setError('Failed to initialize registration. Please check your connection.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleRegistration = async () => {
     if (!flow) return;
 
     setSubmitting(true);
@@ -82,20 +81,20 @@ export default function LoginPage() {
         throw new Error('Security token not found');
       }
 
-      // Submit OAuth login
-      await authActions.submitOAuthLogin(flow.id, csrfToken, 'google');
+      // Submit OAuth registration
+      await authActions.submitOAuthRegistration(flow.id, csrfToken, 'google');
       
       // If we reach here without redirect, something might be wrong
       message.info('Redirecting to Google...');
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('Registration error:', error);
       
       // Handle specific error cases
       if (error.response?.data?.ui?.messages) {
         const errorMessage = error.response.data.ui.messages[0]?.text;
-        setError(errorMessage || 'Login failed. Please try again.');
+        setError(errorMessage || 'Registration failed. Please try again.');
       } else {
-        setError('Login failed. Please try again.');
+        setError('Registration failed. Please try again.');
       }
       
       // Refresh the flow if needed
@@ -107,24 +106,45 @@ export default function LoginPage() {
     }
   };
 
-  const handleRegisterRedirect = () => {
-    history.push('/registration');
+  const handleLoginRedirect = () => {
+    history.push('/login');
   };
 
   if (loading) {
     return (
-      <div className={styles.container}>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      }}>
         <Spin size="large" tip="Initializing..." />
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <Card className={styles.loginCard} title="Welcome to Proto Trading">
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      padding: '20px',
+    }}>
+      <Card 
+        title="Create Your Account" 
+        style={{
+          width: '100%',
+          maxWidth: '400px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          borderRadius: '8px',
+        }}
+      >
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <div style={{ textAlign: 'center' }}>
-            <p>Sign in to access your trading dashboard</p>
+            <p>Join Proto Trading to start managing your portfolio</p>
           </div>
 
           {error && (
@@ -142,21 +162,26 @@ export default function LoginPage() {
             icon={<GoogleOutlined />}
             size="large"
             block
-            onClick={handleGoogleLogin}
+            onClick={handleGoogleRegistration}
             loading={submitting}
             disabled={!flow}
+            style={{
+              height: '48px',
+              fontSize: '16px',
+              borderRadius: '6px',
+            }}
           >
-            Continue with Google
+            Sign up with Google
           </Button>
 
           <div style={{ textAlign: 'center' }}>
-            <span>Don't have an account? </span>
-            <a onClick={handleRegisterRedirect}>Sign up</a>
+            <span>Already have an account? </span>
+            <a onClick={handleLoginRedirect}>Sign in</a>
           </div>
 
           <div style={{ textAlign: 'center', color: '#888' }}>
             <small>
-              By signing in, you agree to our Terms of Service and Privacy Policy
+              By signing up, you agree to our Terms of Service and Privacy Policy
             </small>
           </div>
         </Space>

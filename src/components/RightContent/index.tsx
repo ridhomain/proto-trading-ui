@@ -1,4 +1,5 @@
-import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
+// src/components/RightContent/index.tsx
+import { LogoutOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
 import { useSnapshot } from 'valtio';
 import { Avatar, Menu, Spin, Dropdown, Button, Space } from 'antd';
 import { history } from '@umijs/max';
@@ -18,7 +19,7 @@ export default function RightContent() {
           Login
         </Button>
         <Button onClick={() => authActions.redirectToRegistration()}>
-          Register
+          Sign Up
         </Button>
       </Space>
     );
@@ -30,6 +31,12 @@ export default function RightContent() {
       icon: <UserOutlined />,
       label: 'Profile',
       onClick: () => history.push('/profile'),
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Account Settings',
+      onClick: () => authActions.redirectToSettings(),
     },
     {
       type: 'divider' as const,

@@ -1,3 +1,5 @@
+// src/app.ts
+import React from 'react';
 import { history, RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
 import { message } from 'antd';
 import { authStore, authActions } from '@/stores/auth.store';
@@ -10,10 +12,19 @@ export const request: RequestConfig = {
   errorConfig: {
     errorHandler: (error: any) => {
       const { response } = error;
+      
+      // Don't redirect on 401 during initialization
+      if (authStore.initialized === false) {
+        return;
+      }
+      
       if (response?.status === 401) {
-        authStore.user = null;
-        history.push('/login');
-        message.error('Please login to continue');
+        // Only redirect if we're not already on the home page
+        if (window.location.pathname !== '/') {
+          authStore.user = null;
+          message.error('Please login to continue');
+          authActions.redirectToLogin();
+        }
       } else if (response?.status === 403) {
         message.error('You do not have permission for this action');
       } else if (response?.status >= 500) {
@@ -27,7 +38,7 @@ export const request: RequestConfig = {
         url,
         options: {
           ...options,
-          credentials: 'include',
+          credentials: 'include', // Important for cookies
         },
       };
     },
@@ -36,16 +47,31 @@ export const request: RequestConfig = {
 
 // Get initial state
 export async function getInitialState() {
-  try {
-    const userInfo = await authActions.fetchCurrentUser();
+  // Skip auth check if we're being redirected from Kratos
+  const urlParams = new URLSearchParams(window.location.search);
+  const isCallback = urlParams.has('code') || urlParams.has('flow');
+  
+  if (isCallback) {
     return {
-      currentUser: userInfo,
+      currentUser: null,
+      settings: {
+        layout: 'mix',
+        navTheme: 'light',
+      },
+    };
+  }
+
+  try {
+    const user = await authActions.fetchCurrentUser();
+    return {
+      currentUser: user,
       settings: {
         layout: 'mix',
         navTheme: 'light',
       },
     };
   } catch (error) {
+    // Not logged in - this is OK
     return {
       currentUser: null,
       settings: {
@@ -63,11 +89,16 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     title: 'Proto Trading',
     rightContentRender: RightContent,
     footerRender: Footer,
-    onPageChange: () => {
-      const { location } = history;
-      if (!initialState?.currentUser && location.pathname !== '/login') {
-        history.push('/login');
-      }
-    },
+    // Temporarily disable automatic redirects
+    // onPageChange: () => {
+    //   const { location } = history;
+    //   // Protected routes
+    //   const protectedPaths = ['/dashboard', '/market', '/charts', '/upload', '/profile'];
+    //   const isProtected = protectedPaths.some(path => location.pathname.startsWith(path));
+      
+    //   if (!initialState?.currentUser && isProtected) {
+    //     authActions.redirectToLogin();
+    //   }
+    // },
   };
 };
